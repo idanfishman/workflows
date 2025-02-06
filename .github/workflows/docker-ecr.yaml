@@ -1,0 +1,74 @@
+name: Build and Push Docker Image to ECR
+
+on:
+  workflow_call:
+    inputs:
+      aws_region:
+        description: "The AWS region where the ECR repository is located."
+        required: true
+        type: string
+      aws_role_arn:
+        description: "The AWS IAM role ARN to assume for accessing ECR."
+        required: true
+        type: string
+      ecr_repository:
+        description: "The name of the ECR repository."
+        required: true
+        type: string
+      platforms:
+        description: "The target platforms for the Docker image build."
+        required: false
+        type: string
+        default: "linux/amd64"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      sha_tag: ${{ steps.tags.outputs.sha_tag }}
+      semver_tag: ${{ steps.tags.outputs.semver_tag }}
+      latest_tag: ${{ steps.tags.outputs.latest_tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ inputs.aws_region }}
+          role-to-assume: ${{ inputs.aws_role_arn }}
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ steps.ecr.outputs.registry }}/${{ inputs.ecr_repository }}
+          tags: |
+            type=sha
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+      - uses: docker/build-push-action@v6
+        with:
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: ${{ inputs.platforms }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+      - name: Output tags
+        id: tags
+        run: |
+          extract_tag() {
+            echo "$tags" | grep -oE "[^ ]+:$1" | awk -F: '{print $2}' || echo ""
+          }
+
+          tags="${{ steps.meta.outputs.tags }}"
+          sha_tag=$(extract_tag 'sha-[0-9a-fA-F]+')
+          semver_tag=$(extract_tag '[0-9]+\.[0-9]+\.[0-9]+')
+          latest_tag=$(extract_tag 'latest')
+
+          echo "sha_tag=$sha_tag" >> $GITHUB_OUTPUT
+          echo "semver_tag=$semver_tag" >> $GITHUB_OUTPUT
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
