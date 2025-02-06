@@ -1,4 +1,4 @@
-name: Build and Push Docker Image to ECR
+name: Docker Image
 
 on:
   workflow_call:
@@ -22,7 +22,7 @@ on:
         default: "linux/amd64"
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-24.04
     permissions:
       contents: read
