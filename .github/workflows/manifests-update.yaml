@@ -1,0 +1,56 @@
+name: Manifests Image Update
+
+on:
+  workflow_call:
+    inputs:
+      image:
+        description: "The tag of the image to update."
+        required: true
+        type: string
+      repository:
+        description: "The name of the repository to update."
+        required: true
+        type: string
+      patches:
+        description: "JSON string of patches to apply to the manifests."
+        required: true
+        type: string
+      if_no_files_found:
+        description: "The action to take if no files are found, either 'fail' or 'warn'."
+        required: false
+        type: string
+        default: "warn"
+      service_name:
+        description: "The name of the service to update."
+        required: true
+        type: string
+    secrets:
+      GITHUB_TOKEN:
+        description: "Personal access token with repo scope."
+        required: true
+
+jobs:
+  patch:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.repository }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - id: split
+        run: |
+          echo "repository=$(echo ${{ inputs.repository }} | cut -d ':' -f 1)" >> $GITHUB_OUTPUT
+          echo "tag=$(echo ${{ inputs.image }} | cut -d ':' -f 2)" >> $GITHUB_OUTPUT
+      - id: yq
+        run: |
+
+      - uses: peter-evans/create-pull-request@v7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: bump ${{ inputs.service_name }} to v${{ steps.split.outputs.tag }}"
+          branch: "gha/bump-${{ inputs.service_name }}-${{ steps.split.outputs.tag }}"
+          base: main
+          title: "chore: bump ${{ inputs.service_name }} to v${{ steps.split.outputs.tag }}"
+          body: |
+            Bumps ${{ inputs.service_name }} to v${{ steps.split.outputs.tag }}.
+            run_id: ${{ github.run_id }}
