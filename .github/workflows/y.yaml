@@ -1,0 +1,15 @@
+name: Echo
+
+on:
+  workflow_dispatch:
+
+jobs:
+  echo-dev:
+    uses: ./.github/workflows/x.yaml
+    with:
+      vars_from_env: development
+
+  echo-prod:
+    uses: ./.github/workflows/x.yaml
+    with:
+      vars_from_env: production

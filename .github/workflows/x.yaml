@@ -1,0 +1,19 @@
+on:
+  workflow_call:
+    inputs:
+      vars_from_env:
+        description: "The name of the environment to get variables from."
+        required: true
+        type: string
+
+jobs:
+  echo:
+    runs-on: ubuntu-24.04
+    environment: ${{ inputs.vars_from_env }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Hello, World!"
+      - run: |
+          echo "environment: ${{ inputs.vars_from_env }}"
+      - run: |
+          echo "var1: ${{ vars.VAR1 }}"
